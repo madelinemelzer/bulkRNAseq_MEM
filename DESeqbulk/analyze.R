@@ -1,5 +1,5 @@
 #Code to analyze Count Input Matrix using DESeq2 - created by Aurelia on 2024-08-09 and is based on Keerthana's code 
-# last modified on 03 Sep 2024
+# last modified on 20241213 by MEM
 library(Seurat)
 library(dplyr)
 library(dbplyr)
@@ -10,9 +10,9 @@ library(readr)
 
 
 #Main ---------------------------------
-extData <- "/projects/b1042/GoyalLab/aleona/bulk/extractedData/SA_HS_MP2E7/matrix/"
-Scripts<- "/projects/b1042/GoyalLab/aleona/LabPipelines/DESeqbulk/"
-output <- "/projects/b1042/GoyalLab/aleona/bulk/extractedData/SA_HS_MP2E7/DESeq/"
+extData <- "/Volumes/fsmresfiles/Basic_Sciences/CDB/GoyalLab/People/MadelineMelzer/transcriptionalAdaptation/MEM1102_ACTBMutantIPSCCharacterization/bulkRNAseq/extData/matrix/"
+Scripts<- "/Volumes/fsmresfiles/Basic_Sciences/CDB/GoyalLab/People/MadelineMelzer/transcriptionalAdaptation/scripts/bulkRNAseq/DESeqbulk/"
+output <- "/Volumes/fsmresfiles/Basic_Sciences/CDB/GoyalLab/People/MadelineMelzer/transcriptionalAdaptation/MEM1102_ACTBMutantIPSCCharacterization/bulkRNAseq/extData/deseq/"
 
 source(paste0(Scripts, "deseqbulkfunction.R"))
 
@@ -46,7 +46,7 @@ countmatrixdf <- column_to_rownames(as.data.frame(countmatrix),'ensembl_gene')
 # Select the columns you would like to have in your DESeq 
 # if you want to delete the columns use -c("colname1", "colname2")
 # If you want to include the columns use c("colname1", "colname2")
-countmatrixdf<- dplyr::select(countmatrixdf,c("ID_HS_017_B1_sot_S84", "ID_HS_017_B2_sot_S52", "ID_HS_017_B3_sot_S59", "ID_HS_017_p2a2_S85","ID_SA2-102_P_S53", "ID_SA2-103_P1_S74"))
+# (madeline did not use because i want all?) countmatrixdf<- dplyr::select(countmatrixdf,c("ID_HS_017_B1_sot_S84", "ID_HS_017_B2_sot_S52", "ID_HS_017_B3_sot_S59", "ID_HS_017_p2a2_S85","ID_SA2-102_P_S53", "ID_SA2-103_P1_S74"))
 # countmatrixdf<- dplyr::select(countmatrixdf,-c("Cisplatin_1_S7", "Cisplatin_2_S8", "Gemcitabine_3_S14", "Gemcitabine_1_S12"))
 # cts <- as.matrix.data.frame(countmatrixdf)
 
@@ -55,12 +55,15 @@ countmatrixdf<- dplyr::select(countmatrixdf,c("ID_HS_017_B1_sot_S84", "ID_HS_017
 sample_names <- colnames(countmatrixdf)[colnames(countmatrixdf) != "ensembl_gene"]
 # Specify the condition and the replicate 
 condition_maps <- list(
-  "ID_HS_017_B1_sot_S84" = list(condition = "Sotorasib", replicate = 1),
-  "ID_HS_017_B2_sot_S52" = list(condition = "Sotorasib", replicate = 2),
-  "ID_HS_017_B3_sot_S59" = list(condition = "Sotorasib", replicate = 3),
-  "ID_HS_017_p2a2_S85" = list(condition = "Naive", replicate = 1),
-  "ID_SA2-102_P_S53" = list(condition = "Naive", replicate = 2),
-  "ID_SA2-103_P1_S74" = list(condition = "Naive", replicate = 3)
+  "ID_MEM_Homo_01_S17" = list(condition = "homo", replicate = 1),
+  "ID_MEM_Homo_02_S31" = list(condition = "homo", replicate = 2),
+  "ID_MEM_Homo_03_S6" = list(condition = "homo", replicate = 3),
+  "ID_MEM_Het_01_S3" = list(condition = "het", replicate = 1),
+  "ID_MEM_Het_02_S18" = list(condition = "het", replicate = 2),
+  "ID_MEM_Het_03_S23" = list(condition = "het", replicate = 3),
+  "ID_MEM_WT_01_S16" = list(condition = "wt", replicate = 1),
+  "ID_MEM_WT_02_S14" = list(condition = "wt", replicate = 2),
+  "ID_MEM_WT_03_S22" = list(condition = "wt", replicate = 3)
 )
 # Use the function to create annotation matrix 
 annotation_data <- create_annotation_matrix(sample_names, condition_mapping=condition_maps)
@@ -72,7 +75,7 @@ head(annotation_data)
 # annotate_data <- column_to_rownames(as.data.frame(annotate_data),'sample') 
 # annotate_data <- annotate_data %>% filter(!(condition == "Gemcitabine" & replicate == 2))
 # annotation_data$condition <- factor(annotation_data$condition, levels = c("naive", "Gemcitabine", "Sotorasib", "Cisplatin"))
-annotation_data$condition <- factor(annotation_data$condition, levels = c("Naive", "Sotorasib"))
+annotation_data$condition <- factor(annotation_data$condition, levels = c("wt", "het", "homo"))
 write_csv(annotation_data, paste0(output,"annotationmatrix.csv"))
 
 # Start deseq 
@@ -102,18 +105,18 @@ dds <- dds[keep,]
 # res_naive_vs_sotarasib <- res_naive_vs_sotarasib %>% filter(padj < 0.05)
 
 #Naive samples
-contrast_info <- c("condition", "Sotorasib", "Naive")
+contrast_info <- c("condition", "homo", "wt")
 padj_threshold <- 0.05
 
 # Relevel the condition factor to indicate that the reference is naive
-dds$condition <- relevel(dds$condition, ref = "Naive")
+dds$condition <- relevel(dds$condition, ref = "wt")
 
 # Perform DESeq analysis
 dds <- DESeq(dds)
 
 # Get results for the specified comparison
 full_results <- results(dds, contrast = contrast_info)
-saveRDS(full_results, paste0(output, "DESeqResultnvS.rds"))
+saveRDS(full_results, paste0(output, "DESeqResult__wt_homo.rds"))
 
 
 #Adding gene_id to ENSEMBL only data and combine--------------------------------
@@ -130,7 +133,7 @@ gene_id <- getBM(attributes = c('ensembl_gene_id','external_gene_name'),
 
 # Assuming you have your filtered results and gene_id dataframe ready
 filtered_results_list <- list(full_results)
-comparisons <- c("Naive_vs_Sotorasib")
+comparisons <- c("wt_vs_homo")
 
 all_results <- combine_deseq_results(filtered_results_list, gene_id, comparisons)
 

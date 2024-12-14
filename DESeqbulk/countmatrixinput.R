@@ -1,16 +1,16 @@
 #Code to extract Count Input Matrix from STAR - created by Aurelia on 2024-08-09 and is based on Keerthana's code 
-# last modified on 
+# last modified on 20241213 by MEM
 library(Seurat)
 library(dplyr)
 library(tidyverse)
 
 
 ##Main----------------------------------
-pathToFiles = "/projects/b1042/GoyalLab/aleona/STARAlignmentforBulk/extData2/NK_H23/results/"
+pathToFiles = "/Volumes/fsmresfiles/Basic_Sciences/CDB/GoyalLab/People/MadelineMelzer/transcriptionalAdaptation/MEM1102_ACTBMutantIPSCCharacterization/bulkRNAseq/extData/results/"
 # pathToFiles = "/projects/b1042/GoyalLab/aleona/DESEQ/rawData/bulkRNASeq/"
-extData <- "/projects/b1042/GoyalLab/aleona/bulk/extractedData/NK_H23/matrix/"
+extData <- "/Volumes/fsmresfiles/Basic_Sciences/CDB/GoyalLab/People/MadelineMelzer/transcriptionalAdaptation/MEM1102_ACTBMutantIPSCCharacterization/bulkRNAseq/extData/matrix/"
 # extData <- "/projects/b1042/GoyalLab/aleona/DESEQ/extData/rawdata1/"
-Scripts<- "/projects/b1042/GoyalLab/aleona/LabPipelines/DESeqbulk /"
+Scripts<- "/Volumes/fsmresfiles/Basic_Sciences/CDB/GoyalLab/People/MadelineMelzer/transcriptionalAdaptation/scripts/bulkRNAseq/DESeqbulk/"
 
 source(paste0(Scripts, "deseqbulkfunction.R"))
 
@@ -47,19 +47,6 @@ datasets <- map_chr(filtered_files, function(file) {
 
 # Display results
 print(datasets)
-
-# [1] "ID_NK_H23-E10-7_cis1_S34"   NA                          
-# [3] "ID_NK_H23-E10-7_cis2_S35"   NA                          
-# [5] "ID_NK_H23-E10-7_cis3_S40"   NA                          
-# [7] "ID_NK_H23-E10-7_Gem1_S33"   NA                          
-# [9] "ID_NK_H23-E10-7_Gem2_S39"   NA                          
-# [11] "ID_NK_H23-E10-7_Gem3_S41"   NA                          
-# [13] "ID_NK_H23-E10-7_naive1_S38" NA                          
-# [15] "ID_NK_H23-E10-7_naive2_S42" NA                          
-# [17] "ID_NK_H23-E10-7_naive3_S44" NA                          
-# [19] "ID_NK_H23-E10-7_sot1_S36"   NA                          
-# [21] "ID_NK_H23-E10-7_sot2_S37"   NA                          
-# [23] "ID_NK_H23-E10-7_sot3_S43"   NA               
 
 columnnames <- c()
 for (i in datasets) {
@@ -120,7 +107,7 @@ strandWiseCounts <- finaltable %>%
     propF = forwardstrand / unstranded,  # Calculate the proportion of forwardstrand to unstranded
     propR = reversestrand / unstranded   # Calculate the proportion of reversestrand to unstranded
   )
-
+print(strandWiseCounts)
 
 #Create Annotation matrix
 countmatrix <- finaltable
