@@ -78,6 +78,7 @@ head(annotation_data)
 annotation_data$condition <- factor(annotation_data$condition, levels = c("wt", "het", "homo"))
 write_csv(annotation_data, paste0(output,"annotationmatrix.csv"))
 
+
 # Start deseq 
 dds <- DESeqDataSetFromMatrix(countData = countmatrixdf,
                               colData = annotation_data,
@@ -114,28 +115,128 @@ dds$condition <- relevel(dds$condition, ref = "wt")
 # Perform DESeq analysis
 dds <- DESeq(dds)
 
-# Get results for the specified comparison
-full_results <- results(dds, contrast = contrast_info)
-saveRDS(full_results, paste0(output, "DESeqResult__wt_homo.rds"))
+# Get results for the specified comparisons
+wt_vs_homo <- results(dds, contrast = c("condition", "homo", "wt"))
+wt_vs_het <- results(dds, contrast = c("condition", "het", "wt"))
+
+#full_results <- results(dds, contrast = contrast_info)
+saveRDS(wt_vs_homo, paste0(output, "DESeqResult__wt_homo.rds"))
+saveRDS(wt_vs_het, paste0(output, "DESeqResult__wt_het.rds"))
+
+# If you want to save as CSV:
+write.csv(wt_vs_homo, paste0(output, "DESeqResult_wt_homo.csv"), row.names = FALSE)
+write.csv(wt_vs_het, paste0(output, "DESeqResult_wt_het.csv"), row.names = FALSE)
+
+
+
+
+
 
 
 #Adding gene_id to ENSEMBL only data and combine--------------------------------
 ensembl.ids <- countmatrix['ensembl_gene']
 
-ensembl_98 <- useEnsembl(biomart = 'genes', 
-                          dataset = 'hsapiens_gene_ensembl',
-                          version = 98)
+mart <- useMart("ENSEMBL_MART_ENSEMBL", 
+                dataset = "hsapiens_gene_ensembl",
+                host = "https://www.ensembl.org")
+
+ensembl_ids_vector <- unique(as.character(ensembl.ids$ensembl_gene))
 
 gene_id <- getBM(attributes = c('ensembl_gene_id','external_gene_name'),
       filters = "ensembl_gene_id",
-      values = ensembl.ids$ensembl_gene,
-      mart = ensembl_98)
+      values = ensembl_ids_vector,
+      #values = ensembl.ids$ensembl_gene,
+      uniqueRows = TRUE,
+      mart = mart)
 
 # Assuming you have your filtered results and gene_id dataframe ready
-filtered_results_list <- list(full_results)
+filtered_results_list <- list(wt_vs_homo)
 comparisons <- c("wt_vs_homo")
 
-all_results <- combine_deseq_results(filtered_results_list, gene_id, comparisons)
+wt_vs_homo_names <- combine_deseq_results(filtered_results_list, gene_id, comparisons)
+
+
+#### play
+
+chunk_size <- 100
+id_chunks <- split(ensembl_ids_vector, ceiling(seq_along(ensembl_ids_vector)/chunk_size))
+
+# Function to safely get data for each chunk
+get_chunk_data <- function(chunk) {
+  getBM(
+    attributes = c('ensembl_gene_id', 'external_gene_name'),
+    filters = "ensembl_gene_id",
+    values = chunk,
+    mart = mart
+  )
+}
+
+# Try first chunk to test
+gene_id_test <- get_chunk_data(id_chunks[[1]])
+
+
+
+##Introduction to DGE-------------------------------------
+#https://hbctraining.github.io/DGE_workshop/lessons/05_DGE_DESeq2_analysis2.html
+res_tableOE <- lfcShrink(dds, coef =3, res= full_results)
+summary(res_tableOE)
+
+### Set thresholds
+padj.cutoff <- 0.05
+lfc.cutoff <- 0.58
+
+res_tableOE_tb <- res_tableOE %>%
+  data.frame() %>%
+  rownames_to_column(var="gene") %>%
+  as_tibble()
+
+sigOE <- res_tableOE_tb %>%
+  filter(padj < padj.cutoff & abs(log2FoldChange) > lfc.cutoff)
+
+
+##Independent hypothesis weighting-------------------------------------
+library("IHW")
+dds_naive <- dds
+dds_naive$condition <- relevel(x = dds_naive$condition, ref = "naive")
+
+dds_naive <- DESeq(dds_naive)
+res <- results(dds_naive, contrast=c("condition","naive","Sotorasib"))
+res_naive_vs_sotarasib <- data.frame(res) %>% filter(padj < 0.05)
+resnvSIHW <- results(dds_naive, contrast=c("condition","naive","Sotorasib"), filterFun=ihw)
+summary(resnvSIHW)
+sum(resnvSIHW$padj < 0.05, na.rm=TRUE)
+metadata(resnvSIHW)$ihwResult
+
+
+
+#Testing between 0.05 and 0.1-------------------------------------------
+dds_test <- DESeq(dds)
+res_05 <- results(dds_test, alpha=0.05)
+res_10 <- results(dds_test, alpha=0.1)
+
+# Compare log2FoldChange values
+summary(res_05$log2FoldChange - res_10$log2FoldChange)
+
+# Compare lfcSE values
+summary(res_05$lfcSE - res_10$lfcSE)
+
+# Compare p-values
+summary(res_05$pvalue - res_10$pvalue)
+
+# Compare adjusted p-values
+summary(res_05$padj - res_10$padj)
+
+# Compare adjusted p-values
+summary(res_05$padj - res_10$padj)
+
+
+
+
+
+
+
+########### OLD/ UNUSED FOR ME #####
+
 
 
 ##Match Protein Classes ------------------------------------------
@@ -206,59 +307,3 @@ write_csv(under_sprotein, paste0(output, "underexpress_surfaceprot.csv"))
 # filtered_df <- rawdata %>%
 #   rownames_to_column("ensembl_gene") %>%
 #   filter(ensembl_gene %in% surfaceproteins$ensembl_gene)
-
-
-
-# ##Introduction to DGE------------------------------------- 
-# #https://hbctraining.github.io/DGE_workshop/lessons/05_DGE_DESeq2_analysis2.html
-# res_tableOE <- lfcShrink(dds, coef =3, res= full_results)
-# summary(res_tableOE)
-# 
-# ### Set thresholds
-# padj.cutoff <- 0.05
-# lfc.cutoff <- 0.58
-# 
-# res_tableOE_tb <- res_tableOE %>%
-#   data.frame() %>%
-#   rownames_to_column(var="gene") %>% 
-#   as_tibble()
-# 
-# sigOE <- res_tableOE_tb %>%
-#   filter(padj < padj.cutoff & abs(log2FoldChange) > lfc.cutoff)
-
-# 
-# 
-# ##Independent hypothesis weighting------------------------------------- 
-# library("IHW")
-# dds_naive <- dds
-# dds_naive$condition <- relevel(x = dds_naive$condition, ref = "naive")
-# 
-# dds_naive <- DESeq(dds_naive)
-# res <- results(dds_naive, contrast=c("condition","naive","Sotorasib"))
-# res_naive_vs_sotarasib <- data.frame(res) %>% filter(padj < 0.05)
-# resnvSIHW <- results(dds_naive, contrast=c("condition","naive","Sotorasib"), filterFun=ihw)
-# summary(resnvSIHW)
-# sum(resnvSIHW$padj < 0.05, na.rm=TRUE)
-# metadata(resnvSIHW)$ihwResult
-# 
-# 
-# 
-# #Testing between 0.05 and 0.1-------------------------------------------
-# dds_test <- DESeq(dds)
-# res_05 <- results(dds_test, alpha=0.05)
-# res_10 <- results(dds_test, alpha=0.1)
-# 
-# # Compare log2FoldChange values
-# summary(res_05$log2FoldChange - res_10$log2FoldChange)
-# 
-# # Compare lfcSE values
-# summary(res_05$lfcSE - res_10$lfcSE)
-# 
-# # Compare p-values
-# summary(res_05$pvalue - res_10$pvalue)
-# 
-# # Compare adjusted p-values
-# summary(res_05$padj - res_10$padj)
-# 
-# # Compare adjusted p-values
-# summary(res_05$padj - res_10$padj)
