@@ -1,5 +1,5 @@
 #Code to analyze Count Input Matrix using DESeq2 - created by Aurelia on 2024-08-09 and is based on Keerthana's code 
-# last modified on 20241213 by MEM
+# last modified on 20250107 by MEM
 library(Seurat)
 library(dplyr)
 library(dbplyr)
@@ -120,12 +120,13 @@ wt_vs_homo <- results(dds, contrast = c("condition", "homo", "wt"))
 wt_vs_het <- results(dds, contrast = c("condition", "het", "wt"))
 
 #full_results <- results(dds, contrast = contrast_info)
-saveRDS(wt_vs_homo, paste0(output, "DESeqResult__wt_homo.rds"))
-saveRDS(wt_vs_het, paste0(output, "DESeqResult__wt_het.rds"))
+saveRDS(wt_vs_homo, paste0(output, "DESeqResult__wt_homo.rds")) #202450102
+saveRDS(wt_vs_het, paste0(output, "DESeqResult__wt_het.rds")) #202450102
 
 # If you want to save as CSV:
-write.csv(wt_vs_homo, paste0(output, "DESeqResult_wt_homo.csv"), row.names = FALSE)
-write.csv(wt_vs_het, paste0(output, "DESeqResult_wt_het.csv"), row.names = FALSE)
+write.csv(wt_vs_homo, paste0(output, "DESeqResult_wt_homo.csv"), row.names = FALSE) #202450102
+write.csv(wt_vs_het, paste0(output, "DESeqResult_wt_het.csv"), row.names = FALSE) #202450102
+
 
 
 
@@ -134,9 +135,11 @@ write.csv(wt_vs_het, paste0(output, "DESeqResult_wt_het.csv"), row.names = FALSE
 
 
 #Adding gene_id to ENSEMBL only data and combine--------------------------------
+
+
 ensembl.ids <- countmatrix['ensembl_gene']
 
-mart <- useMart("ENSEMBL_MART_ENSEMBL", 
+mart <- useEnsembl("ENSEMBL_MART_ENSEMBL", 
                 dataset = "hsapiens_gene_ensembl",
                 host = "https://www.ensembl.org")
 
@@ -151,28 +154,42 @@ gene_id <- getBM(attributes = c('ensembl_gene_id','external_gene_name'),
 
 # Assuming you have your filtered results and gene_id dataframe ready
 filtered_results_list <- list(wt_vs_homo)
+filtered_results_list_2 <- list(wt_vs_het)
 comparisons <- c("wt_vs_homo")
+comparisons_2 <- c("wt_vs_het")
 
 wt_vs_homo_names <- combine_deseq_results(filtered_results_list, gene_id, comparisons)
+wt_vs_het_names <- combine_deseq_results(filtered_results_list_2, gene_id, comparisons_2)
+
+write.csv(wt_vs_homo_names, paste0(output, "DESeqResult_wt_homo_withGeneNames.csv"), row.names = FALSE) #202450107
+write.csv(wt_vs_het_names, paste0(output, "DESeqResult_wt_het_withGeneNames.csv"), row.names = FALSE) #202450107
 
 
-#### play
 
-chunk_size <- 100
-id_chunks <- split(ensembl_ids_vector, ceiling(seq_along(ensembl_ids_vector)/chunk_size))
 
-# Function to safely get data for each chunk
-get_chunk_data <- function(chunk) {
-  getBM(
-    attributes = c('ensembl_gene_id', 'external_gene_name'),
-    filters = "ensembl_gene_id",
-    values = chunk,
-    mart = mart
-  )
-}
 
-# Try first chunk to test
-gene_id_test <- get_chunk_data(id_chunks[[1]])
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
