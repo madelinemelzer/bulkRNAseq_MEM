@@ -1,5 +1,5 @@
 #Code to analyze Count Input Matrix using DESeq2 - created by Aurelia on 2024-08-09 and is based on Keerthana's code 
-# last modified on 20250121 by MEM
+# last modified on 20250123 by MEM
 library(Seurat)
 library(dplyr)
 library(dbplyr)
@@ -10,14 +10,14 @@ library(readr)
 
 
 #Main ---------------------------------
-extData <- "/Volumes/fsmresfiles/Basic_Sciences/CDB/GoyalLab/People/MadelineMelzer/transcriptionalAdaptation/MEM1102_ACTBMutantIPSCCharacterization/bulkRNAseq/extData/matrix/"
-Scripts<- "/Volumes/fsmresfiles/Basic_Sciences/CDB/GoyalLab/People/MadelineMelzer/transcriptionalAdaptation/scripts/bulkRNAseq/DESeqbulk/"
-output <- "/Volumes/fsmresfiles/Basic_Sciences/CDB/GoyalLab/People/MadelineMelzer/transcriptionalAdaptation/MEM1102_ACTBMutantIPSCCharacterization/bulkRNAseq/extData/deseq/"
+#extData <- "/Volumes/fsmresfiles/Basic_Sciences/CDB/GoyalLab/People/MadelineMelzer/transcriptionalAdaptation/MEM1102_ACTBMutantIPSCCharacterization/bulkRNAseq/extData/matrix/"
+Scripts<- "/Volumes/fsmresfiles/Basic_Sciences/CDB/GoyalLab/People/MadelineMelzer/transcriptionalAdaptation/extractionScripts/bulkRNAseq/DESeqbulk/"
+output <- "/Volumes/fsmresfiles/Basic_Sciences/CDB/GoyalLab/People/MadelineMelzer/transcriptionalAdaptation/extractedData/MEM1201_Grimes_Urp/bulkRNAseq_20250123/deseq/"
 
 source(paste0(Scripts, "deseqbulkfunction.R"))
 
 #"GeneID"
-mastercounts = as_tibble(read_table(file = "/Volumes/fsmresfiles/Basic_Sciences/CDB/GoyalLab/People/MadelineMelzer/transcriptionalAdaptation/MEM1201_Grimes_Urp/data/mastercounts3.txt"))
+mastercounts = as_tibble(read_table(file = "/Volumes/fsmresfiles/Basic_Sciences/CDB/GoyalLab/People/MadelineMelzer/transcriptionalAdaptation/extractedData/MEM1201_Grimes_Urp/bulkRNAseq_20250123/mastercounts3.txt"))
 
 #to get "LLgeneID" column
 geneInformation = as_tibble(read_csv(file = "/Users/mem3579/p32655/melzer/MEM1201_Grimes_Urp/refData/v4_3_2geneinfo.csv"))
@@ -26,7 +26,7 @@ geneInformation = as_tibble(read_csv(file = "/Users/mem3579/p32655/melzer/MEM120
 mastercounts_meta <- mastercounts %>%
   left_join(geneInformation, by = c("GeneID" = "LLgeneID"))
 
-write.csv(mastercounts_meta, file = "/Volumes/fsmresfiles/Basic_Sciences/CDB/GoyalLab/People/MadelineMelzer/transcriptionalAdaptation/MEM1201_Grimes_Urp/data/mastercounts3_meta.csv")
+#write.csv(mastercounts_meta, file = "/Volumes/fsmresfiles/Basic_Sciences/CDB/GoyalLab/People/MadelineMelzer/transcriptionalAdaptation/MEM1201_Grimes_Urp/data/mastercounts3_meta.csv")
 
 
 countmatrix = mastercounts_meta %>% select(-Length, -LLchr, -LLstart, -LLend, -LLstrand, -geneName, -Ens99geneIDversion, -EntrezGeneID, -ZFINgeneID, -RefSeqAnnotationNote, -Ens99annotationNote, -'LLgeneSymbol (V4.3.2.gtf)')
@@ -172,31 +172,30 @@ saveRDS(control_vs_urp1urp2, paste0(output, "DESeqResult__control_urp1urp2.rds")
 saveRDS(control_vs_uts, paste0(output, "DESeqResult__control_uts.rds")) #20250121
 
 # Save CSV files
-write.csv(control_vs_urp1, paste0(output, "DESeqResult_control_urp1.csv"), row.names = FALSE) #20250121
-write.csv(control_vs_urp2, paste0(output, "DESeqResult_control_urp2.csv"), row.names = FALSE) #20250121
-write.csv(control_vs_urp1urp2, paste0(output, "DESeqResult_control_urp1urp2.csv"), row.names = FALSE) #20250121
-write.csv(control_vs_uts, paste0(output, "DESeqResult_control_uts.csv"), row.names = FALSE) #20250121
+write.csv(control_vs_urp1, paste0(output, "DESeqResult_control_urp1.csv"), row.names = TRUE) #20250123
+write.csv(control_vs_urp2, paste0(output, "DESeqResult_control_urp2.csv"), row.names = TRUE) #20250123
+write.csv(control_vs_urp1urp2, paste0(output, "DESeqResult_control_urp1urp2.csv"), row.names = TRUE) #20250123
+write.csv(control_vs_uts, paste0(output, "DESeqResult_control_uts.csv"), row.names = TRUE) #20250123
+
+
 
 
 #Adding back metadata --------------------------------
 
-add_metadata_to_deseq_results <- function(deseq_result, gene_id, comparison_name, geneInformation, output_path) {
-  
-  #temp
-  deseq_result = control_vs_urp1 
-  gene_id = gene_id
-  comparison_name = "control_vs_urp1" 
-  geneInformation = geneInformation
-  output_path = output
-  
-  # Add gene names
-  result_with_names <- combine_deseq_results(list(deseq_result), gene_id, comparison_name)
+# Re-open results for adding back metadata
+control_vs_urp1 <- read.csv(paste0(output, "DESeqResult_control_urp1.csv"))
+control_vs_urp2 <- read.csv(paste0(output, "DESeqResult_control_urp2.csv"))
+control_vs_urp1urp2 <- read.csv(paste0(output, "DESeqResult_control_urp1urp2.csv"))
+control_vs_uts <- read.csv(paste0(output, "DESeqResult_control_uts.csv"))
+
+add_metadata_to_deseq_results <- function(deseq_result,comparison_name, output_path) {
   
   # Add metadata
-  result_with_meta <- result_with_names %>% select (-external_gene_name) %>%
+  result_with_meta <- deseq_result %>%
     left_join(
       geneInformation %>% 
         select(LLgeneID, 
+               `LLgeneSymbol (V4.3.2.gtf)`,
                LLchr, 
                LLstart, 
                LLend, 
@@ -206,49 +205,39 @@ add_metadata_to_deseq_results <- function(deseq_result, gene_id, comparison_name
                EntrezGeneID, 
                ZFINgeneID, 
                RefSeqAnnotationNote, 
-               Ens99annotationNote, 
-               `LLgeneSymbol (V4.3.2.gtf)`), 
-      by = c("ensembl_gene" = "LLgeneID"))
+               Ens99annotationNote), 
+      by = c("X" = "LLgeneID"))
   
   # Write CSV
-  #write.csv(result_with_meta, 
-  #          paste0(output_path, "DESeqResult_", comparison_name, "_withGeneNames_and_Metadata.csv"), 
-  #          row.names = TRUE)
+  write.csv(result_with_meta, 
+            paste0(output_path, "DESeqResult_", comparison_name, "_withGeneNamesAndMetadata.csv"), 
+            row.names = TRUE)
   
   # Return the result in case you want to do further processing
   return(result_with_meta)
 }
 
-# Usage example:
 control_vs_urp1_meta <- add_metadata_to_deseq_results(
   deseq_result = control_vs_urp1, 
-  gene_id = gene_id, 
   comparison_name = "control_vs_urp1", 
-  geneInformation = geneInformation, 
   output_path = output
 )
 
 control_vs_urp2_meta <- add_metadata_to_deseq_results(
   deseq_result = control_vs_urp2, 
-  gene_id = gene_id, 
   comparison_name = "control_vs_urp2", 
-  geneInformation = geneInformation, 
   output_path = output
 )
 
 control_vs_urp1urp2_meta <- add_metadata_to_deseq_results(
   deseq_result = control_vs_urp1urp2, 
-  gene_id = gene_id, 
   comparison_name = "control_vs_urp1urp2", 
-  geneInformation = geneInformation, 
   output_path = output
 )
 
 control_vs_uts_meta <- add_metadata_to_deseq_results(
   deseq_result = control_vs_uts, 
-  gene_id = gene_id, 
   comparison_name = "control_vs_uts", 
-  geneInformation = geneInformation, 
   output_path = output
 )
 
@@ -273,139 +262,3 @@ control_vs_uts_meta <- add_metadata_to_deseq_results(
 
 
 
-
-
-
-
-
-##Introduction to DGE-------------------------------------
-#https://hbctraining.github.io/DGE_workshop/lessons/05_DGE_DESeq2_analysis2.html
-res_tableOE <- lfcShrink(dds, coef =3, res= full_results)
-summary(res_tableOE)
-
-### Set thresholds
-padj.cutoff <- 0.05
-lfc.cutoff <- 0.58
-
-res_tableOE_tb <- res_tableOE %>%
-  data.frame() %>%
-  rownames_to_column(var="gene") %>%
-  as_tibble()
-
-sigOE <- res_tableOE_tb %>%
-  filter(padj < padj.cutoff & abs(log2FoldChange) > lfc.cutoff)
-
-
-##Independent hypothesis weighting-------------------------------------
-library("IHW")
-dds_naive <- dds
-dds_naive$condition <- relevel(x = dds_naive$condition, ref = "naive")
-
-dds_naive <- DESeq(dds_naive)
-res <- results(dds_naive, contrast=c("condition","naive","Sotorasib"))
-res_naive_vs_sotarasib <- data.frame(res) %>% filter(padj < 0.05)
-resnvSIHW <- results(dds_naive, contrast=c("condition","naive","Sotorasib"), filterFun=ihw)
-summary(resnvSIHW)
-sum(resnvSIHW$padj < 0.05, na.rm=TRUE)
-metadata(resnvSIHW)$ihwResult
-
-
-
-#Testing between 0.05 and 0.1-------------------------------------------
-dds_test <- DESeq(dds)
-res_05 <- results(dds_test, alpha=0.05)
-res_10 <- results(dds_test, alpha=0.1)
-
-# Compare log2FoldChange values
-summary(res_05$log2FoldChange - res_10$log2FoldChange)
-
-# Compare lfcSE values
-summary(res_05$lfcSE - res_10$lfcSE)
-
-# Compare p-values
-summary(res_05$pvalue - res_10$pvalue)
-
-# Compare adjusted p-values
-summary(res_05$padj - res_10$padj)
-
-# Compare adjusted p-values
-summary(res_05$padj - res_10$padj)
-
-
-
-
-
-
-
-########### OLD/ UNUSED FOR ME #####
-
-
-
-##Match Protein Classes ------------------------------------------
-#Read the Protein atlast database 
-proteinatlas <- read_tsv("/projects/b1042/GoyalLab/aleona/bulk/Protein_data/proteinatlas.tsv", 
-                         col_names = TRUE, 
-                         show_col_types = FALSE)
-
-# Assuming proteinatlas is already loaded
-
-full_results <- match_and_classify_proteins(all_results, "ensembl_gene", proteinatlas)
-
-# Ordered by abs lfc value
-ordered <- as.data.frame(full_results)
-
-# Convert to absolute values
-ordered$log2FoldChange <- abs(ordered$log2FoldChange)
-
-# Order the data frame
-ordered <- ordered[order(ordered$log2FoldChange, decreasing = TRUE), ]
-
-#Only the Log2FoldChange above 2 
-saveabove2 <- ordered %>% filter(log2FoldChange > 2 ) %>% filter(padj < 0.05 )
-
-#Saving results 
-# write_csv(saveabove2, paste0(extData2, "keeptrackSep32024.csv"))
-write_csv(all_results, paste0(output, "DESeqwithgeneid_NaivevsSotfull.csv"))
-write_csv(saveabove2, paste0(output, "DESeq_NvSabsLFCresult.csv"))
-saveRDS(dds, paste0(extData, "DESEQ.rds"))
-
-#Filter the data------------------------------------------
-ordered1 <- as.data.frame(full_results)
-
-#Split between overexpression and underexpression 
-over <- ordered1 %>% filter(log2FoldChange > 2 ) %>% filter(padj < 0.05 ) 
-under <- ordered1 %>% filter(log2FoldChange < -2 ) %>% filter(padj < 0.05 )
-
-#Get the gene count data or rawdata
-genecountdata <- countmatrixdf
-genecountdata <- rownames_to_column(genecountdata, "ensembl_gene")
-
-#Add the rawcount into the dataset 
-#For left_join to work, you need to get the data 
-over_all <- left_join(over, genecountdata, by = "ensembl_gene")
-under_all <- left_join(under, genecountdata, by = "ensembl_gene")
-
-write_csv(over_all, paste0(output, "overexpress.csv"))
-write_csv(under_all, paste0(output, "underexpress.csv"))
-
-#Filter just surfaceproteins 
-over_sprotein <- over_all %>% filter(`Protein Class`=="Surface Proteins")
-under_sprotein <- under_all %>% filter(`Protein Class`=="Surface Proteins")
-
-write_csv(over_sprotein, paste0(output, "overexpress_surfaceprot.csv"))
-write_csv(under_sprotein, paste0(output, "underexpress_surfaceprot.csv"))
-
-
-# saveabove2 <- read_csv("/projects/b1042/GoyalLab/aleona/DESeq/extData/DESeq_NvSabsLFCresult.csv")
-# 
-# #Making into dataframe 
-# dataset <- as.data.frame(saveabove2)
-# 
-# #Making into only surface proteins 
-# surfaceproteins <- dataset %>% filter(`Protein Class`=="Surface Proteins")
-# 
-# rawdata <-countmatrixdf 
-# 
-# filtered_df <- rawdata %>%
-#   rownames_to_column("ensembl_gene") %>%
-#   filter(ensembl_gene %in% surfaceproteins$ensembl_gene)
